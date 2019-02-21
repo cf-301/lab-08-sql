@@ -34,7 +34,7 @@ app.get('/location', (request, response) => {
 app.get('/weather', getWeather);
 
 // Do not comment in until weather is working
-// app.get('/meetups', getMeetups);
+app.get('/meetups', getMeetups);
 
 // Make sure the server is listening for requests
 app.listen(PORT, () => console.log(`Listening on ${PORT}`));
@@ -55,14 +55,12 @@ function Weather(day) {
   this.time = new Date(day.time * 1000).toString().slice(0, 15);
 }
 
-// function Meetup(meetup) {
-//   this.tableName = 'meetups';
-//   this.link = meetup.link;
-//   this.name = meetup.group.name;
-//   this.creation_date = new Date(meetup.group.created).toString().slice(0, 15);
-//   this.host = meetup.group.who;
-//   this.created_at = Date.now();
-// }
+function Meetup(meetup) {
+  this.link = meetup.link;
+  this.name = meetup.group.name;
+  this.creation_date = new Date(meetup.group.created).toString().slice(0, 15);
+  this.host = meetup.group.who;
+}
 
 // *********************
 // HELPER FUNCTIONS
@@ -72,6 +70,21 @@ function handleError(err, res) {
   console.error(err);
   if (res) res.status(500).send('Sorry, something went wrong');
 }
+
+// function checkIfInDB(request, response, dbName, ifInDB, notInDB){
+//   const SQL = `SELECT * FROM ${dbName} WHERE location_id=$1;`;
+//   const values = [request.query.data.id];
+//   return client.query(SQL, values)
+//     .then(result => {
+//       if(result.rowCount > 0) {
+//         ifInDB;
+//       }else{
+//         notInDB;
+//       }
+//     })
+//     .catch(error => handleError(error, response));
+// }
+
 
 function getLocation(query) {
   // CREATE the query string to check for the existence of the location
@@ -153,28 +166,47 @@ function getWeather(request, response) {
                   this.log('158', result.rows[0].id)
                 })
                 .catch(console.error)
-              })
+            })
             response.send(weatherSummaries);
           })
           .catch(error => handleError(error, response));
       }
-  })
+    })
 }
 
 
-// function getMeetups(request, response) {
-//       const url = `https://api.meetup.com/find/upcoming_events?&sign=true&photo-host=public&lon=${request.query.data.longitude}&page=20&lat=${request.query.data.latitude}&key=${process.env.MEETUP_API_KEY}`
+function getMeetups(request, response) {
+  const SQL =`SELECT * FROM meetups WHERE location_id=$1;`;
+  const values = [request.query.data.id];
 
-//       superagent.get(url)
-//         .then(result => {
-//           const meetups = result.body.events.map(meetup => {
-//             const event = new Meetup(meetup);
-//             return event;
-//           });
-
-//           response.send(meetups);
-//         })
-//         .catch(error => handleError(error, response));
-//     }
-//   })
+  return client.query(SQL, values)
+    .then(result => {
+      if(result.rowCount > 0){
+        response.send(result.rows[0]);
+      }else{
+        const url = `https://api.meetup.com/find/upcoming_events?&sign=true&photo-host=public&lon=${request.query.data.longitude}&page=20&lat=${request.query.data.latitude}&key=${process.env.MEETUPS_API_KEY}`
+  
+        superagent.get(url)
+          .then(result => {
+            const meetups = result.body.events.map(meetup => {
+              const event = new Meetup(meetup);
+              return event;
+            });
+            let newSQL = `INSERT INTO meetups(link,name,creation_date,host,location_id) VALUES ($1,$2,$3,$4,$5);`;
+            meetups.forEach(summary => {
+              let newValues = Object.values(summary);
+              newValues.push(request.query.data.id);
+              return client.query(newSQL, newValues)
+                .then(result => {
+                  console.log('155',result.rows);
+                  this.log('158',result.rows[0].id)
+                })
+                .catch(console.error)
+            })
+            response.send(meetups);
+          })
+          .catch(error => handleError(error, response));
+      }
+    })
+}
 
