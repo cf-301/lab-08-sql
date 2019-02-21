@@ -71,19 +71,19 @@ function handleError(err, res) {
   if (res) res.status(500).send('Sorry, something went wrong');
 }
 
-// function checkIfInDB(request, response, dbName, ifInDB, notInDB){
-//   const SQL = `SELECT * FROM ${dbName} WHERE location_id=$1;`;
-//   const values = [request.query.data.id];
-//   return client.query(SQL, values)
-//     .then(result => {
-//       if(result.rowCount > 0) {
-//         ifInDB;
-//       }else{
-//         notInDB;
-//       }
-//     })
-//     .catch(error => handleError(error, response));
-// }
+function checkIfInDB(request, response, dbName, ifInDB, notInDB){
+  const SQL = `SELECT * FROM ${dbName} WHERE location_id=$1;`;
+  const values = [request.query.data.id];
+  return client.query(SQL, values)
+    .then(result => {
+      if(result.rowCount > 0) {
+        ifInDB(result,response);
+      }else{
+        notInDB(request,response);
+      }
+    })
+    .catch(error => handleError(error, response));
+}
 
 
 function getLocation(query) {
@@ -139,40 +139,38 @@ function getLocation(query) {
 }
 
 function getWeather(request, response) {
-  const SQL = `SELECT * FROM weathers WHERE location_id=$1;`;
-  const values = [request.query.data.id];
-
-  return client.query(SQL, values)
-    .then(result => {
-      if(result.rowCount > 0) {
-        console.log('From SQL');
-        response.send(result.rows[0]);
-      }else{
-        const url = `https://api.darksky.net/forecast/${process.env.DARKSKY_API_KEY}/${request.query.data.latitude},${request.query.data.longitude}`;
-        
-        superagent.get(url)
-          .then(result => {
-            const weatherSummaries = result.body.daily.data.map(day => {
-              const summary = new Weather(day);
-              return summary;
-            });
-            let newSQL = `INSERT INTO weathers(forecast,time,location_id) VALUES ($1, $2, $3);`;
-            weatherSummaries.forEach(summary => {
-              let newValues = Object.values(summary);
-              newValues.push(request.query.data.id);
-              return client.query(newSQL, newValues)
-                .then(result => {
-                  console.log('155', result.rows);
-                  this.log('158', result.rows[0].id)
-                })
-                .catch(console.error)
-            })
-            response.send(weatherSummaries);
-          })
-          .catch(error => handleError(error, response));
-      }
-    })
+  checkIfInDB(request,response,"weathers",sendDBData,apiWeather)
 }
+
+function sendDBData(result,response){
+  response.send(result.rows[0]);
+}
+
+function apiWeather(request,response){
+  const url = `https://api.darksky.net/forecast/${process.env.DARKSKY_API_KEY}/${request.query.data.latitude},${request.query.data.longitude}`;
+  
+  superagent.get(url)
+    .then(result => {
+      const weatherSummaries = result.body.daily.data.map(day => {
+        const summary = new Weather(day);
+        return summary;
+      });
+      let newSQL = `INSERT INTO weathers(forecast,time,location_id) VALUES ($1, $2, $3);`;
+      weatherSummaries.forEach(summary => {
+        let newValues = Object.values(summary);
+        newValues.push(request.query.data.id);
+        return client.query(newSQL, newValues)
+          .then(result => {
+            console.log('155', result.rows);
+            console.log('158', result.rows[0].id)
+          })
+          .catch(console.error)
+      })
+      response.send(weatherSummaries);
+    })
+    .catch(error => handleError(error, response));
+}
+
 
 
 function getMeetups(request, response) {
@@ -199,7 +197,7 @@ function getMeetups(request, response) {
               return client.query(newSQL, newValues)
                 .then(result => {
                   console.log('155',result.rows);
-                  this.log('158',result.rows[0].id)
+                  console.log('158',result.rows[0].id)
                 })
                 .catch(console.error)
             })
@@ -209,4 +207,3 @@ function getMeetups(request, response) {
       }
     })
 }
-
