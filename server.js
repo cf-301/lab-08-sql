@@ -31,7 +31,7 @@ app.get('/location', (request, response) => {
 })
 
 // Do not comment in until you have locations in the DB
-// app.get('/weather', getWeather);
+app.get('/weather', getWeather);
 
 // Do not comment in until weather is working
 // app.get('/meetups', getMeetups);
@@ -50,10 +50,10 @@ function Location(query, res) {
   this.longitude = res.geometry.location.lng;
 }
 
-// function Weather(day) {
-//   this.forecast = day.summary;
-//   this.time = new Date(day.time * 1000).toString().slice(0, 15);
-// }
+function Weather(day) {
+  this.forecast = day.summary;
+  this.time = new Date(day.time * 1000).toString().slice(0, 15);
+}
 
 // function Meetup(meetup) {
 //   this.tableName = 'meetups';
@@ -125,9 +125,41 @@ function getLocation(query) {
     });
 }
 
-// function getWeather(request, response) {
-//   Enter the code from the second printout
-// }
+function getWeather(request, response) {
+  const SQL = `SELECT * FROM weathers WHERE location_id=$1;`;
+  const values = [request.query.data.id];
+
+  return client.query(SQL, values)
+    .then(result => {
+      if(result.rowCount > 0) {
+        console.log('From SQL');
+        response.send(result.rows[0]);
+      }else{
+        const url = `https://api.darksky.net/forecast/${process.env.DARKSKY_API_KEY}/${request.query.data.latitude},${request.query.data.longitude}`;
+        
+        superagent.get(url)
+          .then(result => {
+            const weatherSummaries = result.body.daily.data.map(day => {
+              const summary = new Weather(day);
+              return summary;
+            });
+            let newSQL = `INSERT INTO weathers(forecast,time,location_id) VALUES ($1, $2, $3);`;
+            weatherSummaries.forEach(summary => {
+              let newValues = Object.values(summary);
+              newValues.push(request.query.data.id);
+              return client.query(newSQL, newValues)
+                .then(result => {
+                  console.log('155', result.rows);
+                  this.log('158', result.rows[0].id)
+                })
+                .catch(console.error)
+              })
+            response.send(weatherSummaries);
+          })
+          .catch(error => handleError(error, response));
+      }
+  })
+}
 
 
 // function getMeetups(request, response) {
