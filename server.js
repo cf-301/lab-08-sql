@@ -146,7 +146,7 @@ function getWeather(request, response) {
     .then(result => {
       if(result.rowCount > 0) {
         console.log('From SQL');
-        response.send(result.rows[0]);
+        response.send(result.rows);
       }else{
         const url = `https://api.darksky.net/forecast/${process.env.DARKSKY_API_KEY}/${request.query.data.latitude},${request.query.data.longitude}`;
         
@@ -182,7 +182,7 @@ function getMeetups(request, response) {
   return client.query(SQL, values)
     .then(result => {
       if(result.rowCount > 0){
-        response.send(result.rows[0]);
+        response.send(result.rows);
       }else{
         const url = `https://api.meetup.com/find/upcoming_events?&sign=true&photo-host=public&lon=${request.query.data.longitude}&page=20&lat=${request.query.data.latitude}&key=${process.env.MEETUPS_API_KEY}`
   
