@@ -45,12 +45,14 @@ CREATE TABLE IF NOT EXISTS movies (
   location_id INTEGER NOT NULL,
   FOREIGN KEY (location_id) REFERENCES locations (id)
 );
+CREATE TABLE IF NOT EXISTS trails(
   id SERIAL PRIMARY KEY,
   trail_url VARCHAR(255),
   name VARCHAR(255),
   location VARCHAR(255),
   length VARCHAR(255),
   condition_date VARCHAR(255),
+  condition_time VARCHAR(255),
   conditions VARCHAR(255),
   stars VARCHAR(255),
   star_votes VARCHAR(255),
