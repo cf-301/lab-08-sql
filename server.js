@@ -86,7 +86,8 @@ function Trail(trail){
   this.name = trail.name;
   this.loaction = trail.location;
   this.length = trail.length;
-  this.condition_date = trail.conditionDate;
+  this.condition_date = trail.conditionDate.split(' ')[0];
+  this.condition_time = trail.conditionDate.split(' ')[1];
   this.conditions = trail.conditionsStatus;
   this.stars = trail.stars;
   this.star_votes = trail.starVotes;
